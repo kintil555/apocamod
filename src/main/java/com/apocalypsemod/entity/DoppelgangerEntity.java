@@ -27,9 +27,10 @@ public class DoppelgangerEntity extends HostileEntity implements GeoEntity {
     private UUID ownerUuid;
     private String ownerName = "???";
 
-    private static final RawAnimation WALK = RawAnimation.begin().thenLoop("animation.doppelganger.walk");
-    private static final RawAnimation IDLE = RawAnimation.begin().thenLoop("animation.doppelganger.idle");
-    private static final RawAnimation ATTACK = RawAnimation.begin().then("animation.doppelganger.attack", RawAnimation.LoopType.PLAY_ONCE);
+    // Use thenLoop/thenPlay (no LoopType enum needed in GeckoLib 4.7+)
+    private static final RawAnimation WALK  = RawAnimation.begin().thenLoop("animation.doppelganger.walk");
+    private static final RawAnimation IDLE  = RawAnimation.begin().thenLoop("animation.doppelganger.idle");
+    private static final RawAnimation ATTACK = RawAnimation.begin().thenPlay("animation.doppelganger.attack");
 
     public DoppelgangerEntity(EntityType<? extends DoppelgangerEntity> entityType, World world) {
         super(entityType, world);
@@ -60,72 +61,51 @@ public class DoppelgangerEntity extends HostileEntity implements GeoEntity {
     @Override
     public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
         controllers.add(new AnimationController<>(this, "movement", 5, state -> {
-            if (state.isMoving()) {
-                return state.setAndContinue(WALK);
-            }
+            if (state.isMoving()) return state.setAndContinue(WALK);
             return state.setAndContinue(IDLE);
         }));
-
         controllers.add(new AnimationController<>(this, "attack", 2, state -> {
-            if (this.handSwinging) {
-                return state.setAndContinue(ATTACK);
-            }
+            if (this.handSwinging) return state.setAndContinue(ATTACK);
             return PlayState.STOP;
         }));
     }
 
     @Override
-    public AnimatableInstanceCache getAnimatableInstanceCache() {
-        return cache;
-    }
+    public AnimatableInstanceCache getAnimatableInstanceCache() { return cache; }
 
     // ── Owner ─────────────────────────────────────────────────────────────────
 
     public void setOwner(ServerPlayerEntity player) {
         this.ownerUuid = player.getUuid();
         this.ownerName = player.getName().getString();
-        this.setCustomName(
-                Text.literal("☠ " + ownerName + "'s Shadow ☠").formatted(Formatting.DARK_RED)
-        );
+        this.setCustomName(Text.literal("☠ " + ownerName + "'s Shadow ☠").formatted(Formatting.DARK_RED));
     }
 
     public void copyAppearanceFrom(ServerPlayerEntity player) {
         this.ownerName = player.getName().getString();
-        this.setCustomName(
-                Text.literal("☠ " + ownerName + "'s Shadow ☠").formatted(Formatting.DARK_RED)
-        );
+        this.setCustomName(Text.literal("☠ " + ownerName + "'s Shadow ☠").formatted(Formatting.DARK_RED));
     }
 
-    public UUID getOwnerUuid() {
-        return ownerUuid;
-    }
+    public UUID getOwnerUuid() { return ownerUuid; }
 
     // ── Death ─────────────────────────────────────────────────────────────────
 
     @Override
     public void onDeath(DamageSource damageSource) {
         super.onDeath(damageSource);
-
         if (!this.getWorld().isClient()) {
             ServerWorld serverWorld = (ServerWorld) this.getWorld();
-
             if (damageSource.getAttacker() instanceof ServerPlayerEntity killer) {
                 if (ownerUuid != null && ownerUuid.equals(killer.getUuid())) {
                     ApocalypseMod.onDoppelgangerKilledByOwner(killer, serverWorld);
                 } else {
-                    killer.sendMessage(
-                            Text.literal("Bayangan ini bukan milikmu...").formatted(Formatting.YELLOW), false
-                    );
+                    killer.sendMessage(Text.literal("Bayangan ini bukan milikmu...").formatted(Formatting.YELLOW), false);
                 }
             }
-
-            // Lightning effect on death
             net.minecraft.entity.LightningEntity lightning =
                     net.minecraft.entity.EntityType.LIGHTNING_BOLT.create(serverWorld, null,
                     this.getBlockPos(), net.minecraft.entity.SpawnReason.TRIGGERED, false, false);
-            if (lightning != null) {
-                serverWorld.spawnEntity(lightning);
-            }
+            if (lightning != null) serverWorld.spawnEntity(lightning);
         }
     }
 
