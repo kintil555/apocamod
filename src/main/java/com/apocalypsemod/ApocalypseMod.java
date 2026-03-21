@@ -233,7 +233,7 @@ public class ApocalypseMod implements ModInitializer {
                         double ox = (RANDOM.nextDouble() - 0.5) * 20;
                         double oz = (RANDOM.nextDouble() - 0.5) * 20;
                         BlockPos pos = new BlockPos((int)(player.getX() + ox), (int)player.getY(), (int)(player.getZ() + oz));
-                        { net.minecraft.entity.LightningEntity _bolt = net.minecraft.entity.EntityType.LIGHTNING_BOLT.create(world, net.minecraft.entity.SpawnReason.TRIGGERED); if (_bolt != null) { _bolt.refreshPositionAndAngles(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5, 0f, 0f); world.spawnEntity(_bolt); } }
+                        { net.minecraft.entity.LightningEntity _bolt = net.minecraft.entity.EntityType.LIGHTNING_BOLT.create(world, null, pos, net.minecraft.entity.SpawnReason.TRIGGERED, false, false); if (_bolt != null) { world.spawnEntity(_bolt); } }
                     }
                 }
             }
@@ -361,7 +361,7 @@ public class ApocalypseMod implements ModInitializer {
                         BlockPos pos = player.getBlockPos().add(
                                 RANDOM.nextInt(20) - 10, 0, RANDOM.nextInt(20) - 10
                         );
-                        { net.minecraft.entity.LightningEntity _bolt = net.minecraft.entity.EntityType.LIGHTNING_BOLT.create(world, net.minecraft.entity.SpawnReason.TRIGGERED); if (_bolt != null) { _bolt.refreshPositionAndAngles(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5, 0f, 0f); world.spawnEntity(_bolt); } }
+                        { net.minecraft.entity.LightningEntity _bolt = net.minecraft.entity.EntityType.LIGHTNING_BOLT.create(world, null, pos, net.minecraft.entity.SpawnReason.TRIGGERED, false, false); if (_bolt != null) { world.spawnEntity(_bolt); } }
                     }
                 }
             }
