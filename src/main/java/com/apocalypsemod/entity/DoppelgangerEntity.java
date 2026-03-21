@@ -101,9 +101,9 @@ public class DoppelgangerEntity extends HostileEntity {
 
             // Spawn dramatic death effects (particles via lightning)
             net.minecraft.entity.LightningEntity lightning =
-                    net.minecraft.entity.EntityType.LIGHTNING_BOLT.create(serverWorld, net.minecraft.entity.SpawnReason.TRIGGERED);
+                    net.minecraft.entity.EntityType.LIGHTNING_BOLT.create(serverWorld, null,
+                    this.getBlockPos(), net.minecraft.entity.SpawnReason.TRIGGERED, false, false);
             if (lightning != null) {
-                lightning.refreshPositionAndAngles(this.getX(), this.getY(), this.getZ(), 0f, 0f);
                 serverWorld.spawnEntity(lightning);
             }
         }
