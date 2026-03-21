@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "apocalypsemod",
+  "version": "${version}",
+  "name": "Apocalypse Mod",
+  "description": "Kiamat Chaos - bunuh dirimu sendiri, hancurkan dunia!",
+  "authors": ["ApocalypseModTeam"],
+  "contact": {},
+  "license": "MIT",
+  "icon": "assets/apocalypsemod/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": ["com.apocalypsemod.ApocalypseMod"],
+    "client": ["com.apocalypsemod.client.ApocalypseModClient"]
+  },
+  "mixins": ["apocalypsemod.mixins.json"],
+  "depends": {
+    "fabricloader": ">=0.15.0",
+    "fabric-api": "*",
+    "minecraft": "~1.21.1",
+    "java": ">=21"
+  }
+}
