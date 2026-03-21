@@ -11,7 +11,7 @@ base {
 }
 
 repositories {
-	// Add repositories to retrieve artifacts from in here.
+	maven { url "https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/" }
 }
 
 loom {
@@ -33,6 +33,9 @@ dependencies {
 
 	// Fabric API. This is technically optional, but you probably want it anyway.
 	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+
+	// GeckoLib
+	modImplementation "software.bernie.geckolib:geckolib-fabric-1.21.1:${project.geckolib_version}"
 }
 
 processResources {

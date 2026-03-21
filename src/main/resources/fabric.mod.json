@@ -11,7 +11,8 @@
   "environment": "*",
   "entrypoints": {
     "main": ["com.apocalypsemod.ApocalypseMod"],
-    "client": ["com.apocalypsemod.client.ApocalypseModClient"]
+    "client": ["com.apocalypsemod.client.ApocalypseModClient"],
+    "geckolib": ["com.apocalypsemod.ApocalypseMod"]
   },
   "mixins": ["apocalypsemod.mixins.json"],
   "depends": {

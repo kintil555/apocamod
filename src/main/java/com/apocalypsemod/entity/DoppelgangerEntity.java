@@ -7,7 +7,6 @@ import net.minecraft.entity.attribute.DefaultAttributeContainer;
 import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.entity.mob.HostileEntity;
-import net.minecraft.entity.mob.MobEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -15,13 +14,22 @@ import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.world.World;
+import software.bernie.geckolib.animatable.GeoEntity;
+import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
+import software.bernie.geckolib.animation.*;
+import software.bernie.geckolib.util.GeckoLibUtil;
 
 import java.util.UUID;
 
-public class DoppelgangerEntity extends HostileEntity {
+public class DoppelgangerEntity extends HostileEntity implements GeoEntity {
 
+    private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
     private UUID ownerUuid;
     private String ownerName = "???";
+
+    private static final RawAnimation WALK = RawAnimation.begin().thenLoop("animation.doppelganger.walk");
+    private static final RawAnimation IDLE = RawAnimation.begin().thenLoop("animation.doppelganger.idle");
+    private static final RawAnimation ATTACK = RawAnimation.begin().then("animation.doppelganger.attack", RawAnimation.LoopType.PLAY_ONCE);
 
     public DoppelgangerEntity(EntityType<? extends DoppelgangerEntity> entityType, World world) {
         super(entityType, world);
@@ -39,43 +47,60 @@ public class DoppelgangerEntity extends HostileEntity {
 
     @Override
     protected void initGoals() {
-        // Attack the owner first (the player it resembles)
         this.goalSelector.add(1, new MeleeAttackGoal(this, 1.2, false));
         this.goalSelector.add(2, new WanderAroundFarGoal(this, 0.8));
         this.goalSelector.add(3, new LookAtEntityGoal(this, PlayerEntity.class, 8f));
         this.goalSelector.add(4, new LookAroundGoal(this));
-
-        // Target the owner specifically
         this.targetSelector.add(1, new TargetOwnerGoal(this));
         this.targetSelector.add(2, new ActiveTargetGoal<>(this, PlayerEntity.class, true));
     }
 
-    /**
-     * Set the owner of this doppelganger (the player it should attack and resemble).
-     */
+    // ── GeckoLib ──────────────────────────────────────────────────────────────
+
+    @Override
+    public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
+        controllers.add(new AnimationController<>(this, "movement", 5, state -> {
+            if (state.isMoving()) {
+                return state.setAndContinue(WALK);
+            }
+            return state.setAndContinue(IDLE);
+        }));
+
+        controllers.add(new AnimationController<>(this, "attack", 2, state -> {
+            if (this.handSwinging) {
+                return state.setAndContinue(ATTACK);
+            }
+            return PlayState.STOP;
+        }));
+    }
+
+    @Override
+    public AnimatableInstanceCache getAnimatableInstanceCache() {
+        return cache;
+    }
+
+    // ── Owner ─────────────────────────────────────────────────────────────────
+
     public void setOwner(ServerPlayerEntity player) {
         this.ownerUuid = player.getUuid();
         this.ownerName = player.getName().getString();
         this.setCustomName(
-                Text.literal("☠ " + ownerName + " ☠")
-                        .formatted(Formatting.DARK_RED, Formatting.BOLD)
+                Text.literal("☠ " + ownerName + "'s Shadow ☠").formatted(Formatting.DARK_RED)
         );
     }
 
-    /**
-     * Copy visual name from player for display.
-     */
     public void copyAppearanceFrom(ServerPlayerEntity player) {
         this.ownerName = player.getName().getString();
         this.setCustomName(
-                Text.literal("☠ " + ownerName + "'s Shadow ☠")
-                        .formatted(Formatting.DARK_RED)
+                Text.literal("☠ " + ownerName + "'s Shadow ☠").formatted(Formatting.DARK_RED)
         );
     }
 
     public UUID getOwnerUuid() {
         return ownerUuid;
     }
+
+    // ── Death ─────────────────────────────────────────────────────────────────
 
     @Override
     public void onDeath(DamageSource damageSource) {
@@ -84,22 +109,17 @@ public class DoppelgangerEntity extends HostileEntity {
         if (!this.getWorld().isClient()) {
             ServerWorld serverWorld = (ServerWorld) this.getWorld();
 
-            // Check if killed by owner
             if (damageSource.getAttacker() instanceof ServerPlayerEntity killer) {
                 if (ownerUuid != null && ownerUuid.equals(killer.getUuid())) {
-                    // Owner killed their own doppelganger — TRIGGER APOCALYPSE
                     ApocalypseMod.onDoppelgangerKilledByOwner(killer, serverWorld);
                 } else {
-                    // Killed by someone else — warn
                     killer.sendMessage(
-                            Text.literal("Bayangan ini bukan milikmu... tapi mungkin kamu telah menyelamatkan seseorang.")
-                                    .formatted(Formatting.YELLOW),
-                            false
+                            Text.literal("Bayangan ini bukan milikmu...").formatted(Formatting.YELLOW), false
                     );
                 }
             }
 
-            // Spawn dramatic death effects (particles via lightning)
+            // Lightning effect on death
             net.minecraft.entity.LightningEntity lightning =
                     net.minecraft.entity.EntityType.LIGHTNING_BOLT.create(serverWorld, null,
                     this.getBlockPos(), net.minecraft.entity.SpawnReason.TRIGGERED, false, false);
@@ -109,29 +129,24 @@ public class DoppelgangerEntity extends HostileEntity {
         }
     }
 
+    // ── NBT ──────────────────────────────────────────────────────────────────
+
     @Override
     public void writeCustomDataToNbt(NbtCompound nbt) {
         super.writeCustomDataToNbt(nbt);
-        if (ownerUuid != null) {
-            nbt.putUuid("OwnerUuid", ownerUuid);
-        }
+        if (ownerUuid != null) nbt.putUuid("OwnerUuid", ownerUuid);
         nbt.putString("OwnerName", ownerName);
     }
 
     @Override
     public void readCustomDataFromNbt(NbtCompound nbt) {
         super.readCustomDataFromNbt(nbt);
-        if (nbt.containsUuid("OwnerUuid")) {
-            this.ownerUuid = nbt.getUuid("OwnerUuid");
-        }
-        if (nbt.contains("OwnerName")) {
-            this.ownerName = nbt.getString("OwnerName");
-        }
+        if (nbt.containsUuid("OwnerUuid")) this.ownerUuid = nbt.getUuid("OwnerUuid");
+        if (nbt.contains("OwnerName")) this.ownerName = nbt.getString("OwnerName");
     }
 
-    // =========================================================================
-    // Inner class: custom goal to target the owner
-    // =========================================================================
+    // ── Target Owner Goal ────────────────────────────────────────────────────
+
     private static class TargetOwnerGoal extends ActiveTargetGoal<PlayerEntity> {
         private final DoppelgangerEntity doppelganger;
 
@@ -143,7 +158,6 @@ public class DoppelgangerEntity extends HostileEntity {
         @Override
         public boolean canStart() {
             if (doppelganger.ownerUuid == null) return false;
-            // Find the owner in the world
             if (doppelganger.getWorld() instanceof ServerWorld serverWorld) {
                 ServerPlayerEntity owner = serverWorld.getServer()
                         .getPlayerManager().getPlayer(doppelganger.ownerUuid);
