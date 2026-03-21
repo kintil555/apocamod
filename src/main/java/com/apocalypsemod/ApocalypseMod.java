@@ -233,7 +233,7 @@ public class ApocalypseMod implements ModInitializer {
                         double ox = (RANDOM.nextDouble() - 0.5) * 20;
                         double oz = (RANDOM.nextDouble() - 0.5) * 20;
                         BlockPos pos = new BlockPos((int)(player.getX() + ox), (int)player.getY(), (int)(player.getZ() + oz));
-                        world.spawnEntity(net.minecraft.entity.LightningEntity.create(world, pos, false, null));
+                        world.spawnEntity(new net.minecraft.entity.LightningEntity(world, pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5, false));
                     }
                 }
             }
@@ -361,7 +361,7 @@ public class ApocalypseMod implements ModInitializer {
                         BlockPos pos = player.getBlockPos().add(
                                 RANDOM.nextInt(20) - 10, 0, RANDOM.nextInt(20) - 10
                         );
-                        world.spawnEntity(net.minecraft.entity.LightningEntity.create(world, pos, false, null));
+                        world.spawnEntity(new net.minecraft.entity.LightningEntity(world, pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5, false));
                     }
                 }
             }
