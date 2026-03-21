@@ -23,6 +23,10 @@ import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import net.minecraft.block.Block;
+import net.minecraft.block.Blocks;
+import net.minecraft.block.LeavesBlock;
+import net.minecraft.entity.passive.AnimalEntity;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -272,6 +276,25 @@ public class ApocalypseMod implements ModInitializer {
                 });
             }
 
+            // Kill all animals every 60 seconds
+            if (apocalypseTick % 1200 == 0) {
+                killAllAnimals(world);
+            }
+
+            // Strip leaves from trees every 20 seconds
+            if (apocalypseTick % 400 == 0) {
+                for (ServerPlayerEntity player : world.getPlayers()) {
+                    stripLeavesAround(world, player, 30);
+                }
+            }
+
+            // Random fire spread on surface
+            if (apocalypseTick % 60 == 0) {
+                for (ServerPlayerEntity player : world.getPlayers()) {
+                    spreadFireAround(world, player, 25);
+                }
+            }
+
             // Random fire in the sky (fireballs)
             if (apocalypseTick % 80 == 0 && level >= 50) {
                 for (ServerPlayerEntity player : world.getPlayers()) {
@@ -396,11 +419,60 @@ public class ApocalypseMod implements ModInitializer {
         int z = (int)(player.getZ() + oz);
         int y = world.getTopY(net.minecraft.world.Heightmap.Type.WORLD_SURFACE, x, z);
 
-        // Place lava blocks in a small column
         for (int i = 0; i < 5; i++) {
             BlockPos pos = new BlockPos(x, y + i, z);
             if (world.getBlockState(pos).isAir()) {
                 world.setBlockState(pos, net.minecraft.block.Blocks.LAVA.getDefaultState());
+            }
+        }
+    }
+
+    /** Kill all passive animals in the world — they die screaming */
+    private void killAllAnimals(ServerWorld world) {
+        world.iterateEntities().forEach(entity -> {
+            if (entity instanceof AnimalEntity animal && !animal.isDead()) {
+                animal.damage(world.getDamageSources().magic(), animal.getMaxHealth() * 2);
+            }
+        });
+        world.getServer().getPlayerManager().broadcast(
+                Text.literal("☠ Semua makhluk hidup meregang nyawa...")
+                        .formatted(Formatting.DARK_RED, Formatting.ITALIC),
+                false
+        );
+    }
+
+    /** Remove all leaf blocks in a radius around the player */
+    private void stripLeavesAround(ServerWorld world, ServerPlayerEntity player, int radius) {
+        int px = (int) player.getX();
+        int py = (int) player.getY();
+        int pz = (int) player.getZ();
+        int stripped = 0;
+
+        for (int dx = -radius; dx <= radius && stripped < 200; dx++) {
+            for (int dy = -10; dy <= 20 && stripped < 200; dy++) {
+                for (int dz = -radius; dz <= radius && stripped < 200; dz++) {
+                    BlockPos pos = new BlockPos(px + dx, py + dy, pz + dz);
+                    if (world.getBlockState(pos).getBlock() instanceof LeavesBlock) {
+                        world.setBlockState(pos, Blocks.AIR.getDefaultState(),
+                                Block.NOTIFY_LISTENERS | Block.FORCE_STATE);
+                        stripped++;
+                    }
+                }
+            }
+        }
+    }
+
+    /** Spread fire randomly on the surface around the player */
+    private void spreadFireAround(ServerWorld world, ServerPlayerEntity player, int radius) {
+        int count = (int) (apocalypseLevel / 20f); // more fire at higher levels
+        for (int i = 0; i < count; i++) {
+            int x = (int) (player.getX() + (RANDOM.nextDouble() - 0.5) * radius * 2);
+            int z = (int) (player.getZ() + (RANDOM.nextDouble() - 0.5) * radius * 2);
+            int y = world.getTopY(net.minecraft.world.Heightmap.Type.WORLD_SURFACE, x, z);
+            BlockPos pos = new BlockPos(x, y, z);
+            BlockPos below = pos.down();
+            if (world.getBlockState(pos).isAir() && !world.getBlockState(below).isAir()) {
+                world.setBlockState(pos, Blocks.FIRE.getDefaultState());
             }
         }
     }
