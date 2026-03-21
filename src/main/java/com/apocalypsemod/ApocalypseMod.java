@@ -27,8 +27,6 @@ import net.minecraft.block.Block;
 import net.minecraft.block.Blocks;
 import net.minecraft.block.LeavesBlock;
 import net.minecraft.entity.passive.AnimalEntity;
-import net.minecraft.sound.SoundCategory;
-import net.minecraft.sound.SoundEvents;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -232,12 +230,6 @@ public class ApocalypseMod implements ModInitializer {
             world.getGameRules().get(net.minecraft.world.GameRules.DO_DAYLIGHT_CYCLE).set(false, server);
             world.setTimeOfDay(18000); // midnight
 
-            // Ambient spooky sounds — makin sering seiring level naik
-            int ambientInterval = Math.max(40, 200 - (int)(level * 1.5f)); // dari 200 tick -> 40 tick
-            if (apocalypseTick % ambientInterval == 0) {
-                playAmbientSounds(world, level);
-            }
-
             // Random lightning strikes near players every 3 seconds
             if (apocalypseTick % 60 == 0) {
                 for (ServerPlayerEntity player : world.getPlayers()) {
@@ -432,47 +424,6 @@ public class ApocalypseMod implements ModInitializer {
             if (world.getBlockState(pos).isAir()) {
                 world.setBlockState(pos, net.minecraft.block.Blocks.LAVA.getDefaultState());
             }
-        }
-    }
-
-    /** Kill all passive animals in the world — they die screaming */
-    private void playAmbientSounds(ServerWorld world, float level) {
-        // Pilih suara berdasarkan fase kiamat
-        net.minecraft.sound.SoundEvent[] phase1Sounds = {
-                SoundEvents.AMBIENT_CAVE.value(),
-                SoundEvents.AMBIENT_SOUL_SAND_VALLEY_MOOD.value(),
-        };
-        net.minecraft.sound.SoundEvent[] phase2Sounds = {
-                SoundEvents.AMBIENT_SOUL_SAND_VALLEY_MOOD.value(),
-                SoundEvents.AMBIENT_NETHER_WASTES_MOOD.value(),
-                SoundEvents.ENTITY_WITHER_AMBIENT.value(),
-        };
-        net.minecraft.sound.SoundEvent[] phase3Sounds = {
-                SoundEvents.ENTITY_WITHER_AMBIENT.value(),
-                SoundEvents.ENTITY_WITHER_HURT.value(),
-                SoundEvents.AMBIENT_BASALT_DELTAS_MOOD.value(),
-                SoundEvents.ENTITY_ELDER_GUARDIAN_AMBIENT.value(),
-        };
-        net.minecraft.sound.SoundEvent[] phase5Sounds = {
-                SoundEvents.ENTITY_WITHER_DEATH.value(),
-                SoundEvents.ENTITY_ENDER_DRAGON_AMBIENT.value(),
-                SoundEvents.ENTITY_ENDER_DRAGON_GROWL.value(),
-                SoundEvents.ENTITY_WITHER_AMBIENT.value(),
-        };
-
-        net.minecraft.sound.SoundEvent[] pool =
-                level >= 75 ? phase5Sounds :
-                level >= 50 ? phase3Sounds :
-                level >= 25 ? phase2Sounds :
-                              phase1Sounds;
-
-        // Makin tinggi level, makin keras suaranya
-        float volume = 0.5f + (level / 100f) * 1.5f; // 0.5 -> 2.0
-        float pitch  = 0.8f - (level / 100f) * 0.3f; // 0.8 -> 0.5 (makin rendah = makin seram)
-
-        for (ServerPlayerEntity player : world.getPlayers()) {
-            net.minecraft.sound.SoundEvent chosen = pool[RANDOM.nextInt(pool.length)];
-            world.playSound(null, player.getBlockPos(), chosen, SoundCategory.AMBIENT, volume, pitch);
         }
     }
 
