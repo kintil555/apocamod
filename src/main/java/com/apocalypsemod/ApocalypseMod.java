@@ -132,7 +132,7 @@ public class ApocalypseMod implements ModInitializer {
         world.spawnEntity(doppelganger);
 
         player.sendMessage(
-                Text.literal("⚠ Sebuah bayangan dirimu muncul di kejauhan...")
+                Text.literal("⚠ A shadow of yourself emerges in the distance...")
                         .formatted(Formatting.DARK_RED, Formatting.ITALIC),
                 true
         );
@@ -151,12 +151,12 @@ public class ApocalypseMod implements ModInitializer {
 
         // Announce to all players
         world.getServer().getPlayerManager().broadcast(
-                Text.literal("☠ " + killer.getName().getString() + " TELAH MEMBUNUH DIRINYA SENDIRI! KIAMAT DIMULAI! ☠")
+                Text.literal("☠ " + killer.getName().getString() + " HAS KILLED THEIR OWN SHADOW! THE APOCALYPSE BEGINS! ☠")
                         .formatted(Formatting.DARK_RED, Formatting.BOLD),
                 false
         );
         world.getServer().getPlayerManager().broadcast(
-                Text.literal("⚡ Dunia mulai runtuh! Selamatkan dirimu jika masih bisa... ⚡")
+                Text.literal("⚡ The world begins to collapse! Save yourself if you still can... ⚡")
                         .formatted(Formatting.RED),
                 false
         );
@@ -170,7 +170,7 @@ public class ApocalypseMod implements ModInitializer {
     public static void triggerApocalypseManually(MinecraftServer server) {
         if (apocalypseTriggered) {
             server.getPlayerManager().broadcast(
-                    Text.literal("[ApocalypseMod] Kiamat sudah berjalan!")
+                    Text.literal("[ApocalypseMod] The apocalypse is already running!")
                             .formatted(Formatting.YELLOW), false
             );
             return;
@@ -180,7 +180,7 @@ public class ApocalypseMod implements ModInitializer {
         apocalypseTick = 0;
 
         server.getPlayerManager().broadcast(
-                Text.literal("☠ KIAMAT DIPICU! CHAOS MELANDA DUNIA! ☠")
+                Text.literal("☠ APOCALYPSE TRIGGERED! CHAOS ENGULFS THE WORLD! ☠")
                         .formatted(Formatting.DARK_RED, Formatting.BOLD),
                 false
         );
@@ -195,11 +195,12 @@ public class ApocalypseMod implements ModInitializer {
         for (ServerWorld world : server.getWorlds()) {
             world.getGameRules().get(net.minecraft.world.GameRules.DO_DAYLIGHT_CYCLE).set(true, server);
             world.getGameRules().get(net.minecraft.world.GameRules.DO_WEATHER_CYCLE).set(true, server);
-            world.setWeather(0, 6000, false, false); // reset weather
+            world.getGameRules().get(net.minecraft.world.GameRules.DO_MOB_SPAWNING).set(true, server);
+            world.setWeather(0, 6000, false, false);
         }
 
         server.getPlayerManager().broadcast(
-                Text.literal("[ApocalypseMod] Kiamat telah direset.")
+                Text.literal("[ApocalypseMod] The apocalypse has been reset.")
                         .formatted(Formatting.GREEN), false
         );
     }
@@ -276,7 +277,11 @@ public class ApocalypseMod implements ModInitializer {
                 });
             }
 
-            // Kill all animals every 60 seconds
+            // Kill all animals once and disable mob spawning permanently
+            if (apocalypseTick == 1) {
+                // Disable ALL natural mob spawning — only Doppelgangers should spawn
+                world.getGameRules().get(net.minecraft.world.GameRules.DO_MOB_SPAWNING).set(false, server);
+            }
             if (apocalypseTick % 1200 == 0) {
                 killAllAnimals(world);
             }
@@ -284,7 +289,7 @@ public class ApocalypseMod implements ModInitializer {
             // Strip leaves from trees every 20 seconds
             if (apocalypseTick % 400 == 0) {
                 for (ServerPlayerEntity player : world.getPlayers()) {
-                    stripLeavesAround(world, player, 30);
+                    stripLeavesAround(world, player, 80);
                 }
             }
 
@@ -314,7 +319,7 @@ public class ApocalypseMod implements ModInitializer {
                         player.addStatusEffect(new net.minecraft.entity.effect.StatusEffectInstance(
                                 net.minecraft.entity.effect.StatusEffects.LEVITATION, 60, 0));
                         player.sendMessage(
-                                Text.literal("⚠ Gravitasi mulai kacau!")
+                                Text.literal("⚠ Gravity is going haywire!")
                                         .formatted(Formatting.GOLD), true
                         );
                     }
@@ -359,7 +364,7 @@ public class ApocalypseMod implements ModInitializer {
                     if (!player.isCreative() && !player.isSpectator()) {
                         player.damage(world.getDamageSources().magic(), 2f);
                         player.sendMessage(
-                                Text.literal("💀 Dunia merobek jiwamu...")
+                                Text.literal("💀 The world tears at your soul...")
                                         .formatted(Formatting.DARK_RED), true
                         );
                     }
@@ -392,7 +397,7 @@ public class ApocalypseMod implements ModInitializer {
             // Announce chaos every 30 seconds
             if (apocalypseTick % 600 == 0) {
                 server.getPlayerManager().broadcast(
-                        Text.literal("☠ KIAMAT TOTAL! DUNIA SUDAH HANCUR LEBUR! ☠")
+                        Text.literal("☠ TOTAL APOCALYPSE! THE WORLD IS IN RUINS! ☠")
                                 .formatted(Formatting.DARK_RED, Formatting.BOLD),
                         false
                 );
@@ -434,27 +439,25 @@ public class ApocalypseMod implements ModInitializer {
             }
         });
         world.getServer().getPlayerManager().broadcast(
-                Text.literal("☠ Semua makhluk hidup meregang nyawa...")
+                Text.literal("☠ All living creatures are dying...")
                         .formatted(Formatting.DARK_RED, Formatting.ITALIC),
                 false
         );
     }
 
-    /** Remove all leaf blocks in a radius around the player */
+    /** Remove all leaf blocks in a large radius around every player */
     private void stripLeavesAround(ServerWorld world, ServerPlayerEntity player, int radius) {
         int px = (int) player.getX();
         int py = (int) player.getY();
         int pz = (int) player.getZ();
-        int stripped = 0;
-
-        for (int dx = -radius; dx <= radius && stripped < 200; dx++) {
-            for (int dy = -10; dy <= 20 && stripped < 200; dy++) {
-                for (int dz = -radius; dz <= radius && stripped < 200; dz++) {
+        // No strip cap — iterate fully; done per-call so spread across ticks naturally
+        for (int dx = -radius; dx <= radius; dx++) {
+            for (int dy = -15; dy <= 30; dy++) {
+                for (int dz = -radius; dz <= radius; dz++) {
                     BlockPos pos = new BlockPos(px + dx, py + dy, pz + dz);
                     if (world.getBlockState(pos).getBlock() instanceof LeavesBlock) {
                         world.setBlockState(pos, Blocks.AIR.getDefaultState(),
                                 Block.NOTIFY_LISTENERS | Block.FORCE_STATE);
-                        stripped++;
                     }
                 }
             }

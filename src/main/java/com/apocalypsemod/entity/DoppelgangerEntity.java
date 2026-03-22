@@ -78,12 +78,12 @@ public class DoppelgangerEntity extends HostileEntity implements GeoEntity {
     public void setOwner(ServerPlayerEntity player) {
         this.ownerUuid = player.getUuid();
         this.ownerName = player.getName().getString();
-        this.setCustomName(Text.literal("☠ " + ownerName + "'s Shadow ☠").formatted(Formatting.DARK_RED));
+        this.setCustomName(Text.literal("☠ Shadow of " + ownerName + " ☠").formatted(Formatting.DARK_RED));
     }
 
     public void copyAppearanceFrom(ServerPlayerEntity player) {
         this.ownerName = player.getName().getString();
-        this.setCustomName(Text.literal("☠ " + ownerName + "'s Shadow ☠").formatted(Formatting.DARK_RED));
+        this.setCustomName(Text.literal("☠ Shadow of " + ownerName + " ☠").formatted(Formatting.DARK_RED));
     }
 
     public UUID getOwnerUuid() { return ownerUuid; }
@@ -99,7 +99,7 @@ public class DoppelgangerEntity extends HostileEntity implements GeoEntity {
                 if (ownerUuid != null && ownerUuid.equals(killer.getUuid())) {
                     ApocalypseMod.onDoppelgangerKilledByOwner(killer, serverWorld);
                 } else {
-                    killer.sendMessage(Text.literal("Bayangan ini bukan milikmu...").formatted(Formatting.YELLOW), false);
+                    killer.sendMessage(Text.literal("This shadow is not yours... but you may have saved someone.").formatted(Formatting.YELLOW), false);
                 }
             }
             net.minecraft.entity.LightningEntity lightning =

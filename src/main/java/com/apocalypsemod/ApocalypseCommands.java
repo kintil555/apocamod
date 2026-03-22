@@ -29,7 +29,7 @@ public class ApocalypseCommands {
     private static int triggerApocalypse(CommandContext<ServerCommandSource> ctx) {
         ApocalypseMod.triggerApocalypseManually(ctx.getSource().getServer());
         ctx.getSource().sendFeedback(
-                () -> Text.literal("[ApocalypseMod] Kiamat telah dipicu secara manual!")
+                () -> Text.literal("[ApocalypseMod] Apocalypse manually triggered!")
                         .formatted(Formatting.RED, Formatting.BOLD),
                 true
         );
@@ -39,7 +39,7 @@ public class ApocalypseCommands {
     private static int resetApocalypse(CommandContext<ServerCommandSource> ctx) {
         ApocalypseMod.resetApocalypse(ctx.getSource().getServer());
         ctx.getSource().sendFeedback(
-                () -> Text.literal("[ApocalypseMod] Kiamat direset.")
+                () -> Text.literal("[ApocalypseMod] Apocalypse reset.")
                         .formatted(Formatting.GREEN),
                 true
         );
@@ -48,10 +48,10 @@ public class ApocalypseCommands {
 
     private static int status(CommandContext<ServerCommandSource> ctx) {
         String status = ApocalypseMod.apocalypseTriggered
-                ? "AKTIF (Level: " + String.format("%.1f", ApocalypseMod.apocalypseLevel) + "%)"
-                : "TIDAK AKTIF";
+                ? "ACTIVE (Level: " + String.format("%.1f", ApocalypseMod.apocalypseLevel) + "%)"
+                : "INACTIVE";
         ctx.getSource().sendFeedback(
-                () -> Text.literal("[ApocalypseMod] Status Kiamat: " + status)
+                () -> Text.literal("[ApocalypseMod] Apocalypse status: " + status)
                         .formatted(ApocalypseMod.apocalypseTriggered ? Formatting.RED : Formatting.GREEN),
                 false
         );
@@ -73,7 +73,7 @@ public class ApocalypseCommands {
                 );
                 world.spawnEntity(doppelganger);
                 ctx.getSource().sendFeedback(
-                        () -> Text.literal("[ApocalypseMod] Doppelganger spawned tepat di depanmu!")
+                        () -> Text.literal("[ApocalypseMod] Doppelganger spawned right in front of you!")
                                 .formatted(Formatting.GOLD),
                         false
                 );
