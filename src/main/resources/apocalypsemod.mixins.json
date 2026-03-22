@@ -4,9 +4,6 @@
   "package": "com.apocalypsemod.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [],
-  "client": [
-    "client.DebugHudMixin"
-  ],
   "injectors": {
     "defaultRequire": 1
   }
