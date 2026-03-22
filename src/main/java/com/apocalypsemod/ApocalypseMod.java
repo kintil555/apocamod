@@ -420,11 +420,12 @@ public class ApocalypseMod implements ModInitializer {
         double z = player.getZ() + (RANDOM.nextDouble() - 0.5) * 40;
         double y = player.getY() + 30 + RANDOM.nextDouble() * 20;
 
-        net.minecraft.entity.projectile.FireballEntity fireball =
-                new net.minecraft.entity.projectile.FireballEntity(world, null,
-                        new Vec3d(0, -1, 0), 2);
-        fireball.setPosition(x, y, z);
-        world.spawnEntity(fireball);
+        // Use WitherSkull instead of FireballEntity — does not require a non-null owner
+        net.minecraft.entity.projectile.WitherSkullEntity skull =
+                new net.minecraft.entity.projectile.WitherSkullEntity(world, null, new Vec3d(0, -1, 0));
+        skull.setPosition(x, y, z);
+        skull.setCharged(true); // blue charged wither skull = more destructive
+        world.spawnEntity(skull);
     }
 
     private void spawnLavaGeyser(ServerWorld world, ServerPlayerEntity player) {
