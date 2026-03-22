@@ -278,10 +278,17 @@ public class ApocalypseMod implements ModInitializer {
                 });
             }
 
-            // Kill all animals once and disable mob spawning permanently
+            // Kill all mobs and disable spawning
             if (apocalypseTick == 1) {
-                // Disable ALL natural mob spawning — only Doppelgangers should spawn
+                killAllMobs(world); // first pass
                 world.getGameRules().get(net.minecraft.world.GameRules.DO_MOB_SPAWNING).set(false, server);
+            }
+            if (apocalypseTick == 40) {
+                killAllMobs(world); // second pass after 2 sec
+            }
+            // Every 5 seconds kill any surviving mobs in loaded chunks
+            if (apocalypseTick % 100 == 0) {
+                killAllMobs(world);
             }
 
             // Deliver netherite sword via lightning chest — once per apocalypse
