@@ -17,22 +17,25 @@ public class ApocalypseClientEffects {
     private static final Random RANDOM = Random.create();
     private static int ambientTick = 0;
 
-    // Tracks red fade-in progress (0.0 -> 1.0) when level hits 100
-    private static float redFadeProgress = 0f;
-    private static boolean fullRedActive = false;
+    // Phase 100 end-sequence state
+    private static float redFadeProgress = 0f;      // 0.0 -> 1.0
+    private static boolean endSequenceActive = false;
+    private static int endSequenceTick = 0;          // counts ticks after text appears
+    private static final int CLOSE_AFTER_TICKS = 400; // 20 seconds = 400 ticks
 
     public static void onClientTick(MinecraftClient client) {
         if (!ApocalypseMod.apocalypseTriggered || client.player == null) {
             redFadeProgress = 0f;
-            fullRedActive = false;
+            endSequenceActive = false;
+            endSequenceTick = 0;
             return;
         }
 
         float level = ApocalypseMod.apocalypseLevel;
         ambientTick++;
 
-        // ── Camera Shake ──────────────────────────────────────────────────────
-        if (level >= 10f) {
+        // ── Camera Shake (disabled during end sequence) ───────────────────────
+        if (level >= 10f && !endSequenceActive) {
             float intensity = (level / 100f) * 3.5f;
             float dy = (RANDOM.nextFloat() - 0.5f) * intensity;
             float dp = (RANDOM.nextFloat() - 0.5f) * intensity;
@@ -41,26 +44,46 @@ public class ApocalypseClientEffects {
         }
 
         // ── Fast Day/Night cycle ─────────────────────────────────────────────
-        if (level >= 25f && client.world != null) {
+        if (level >= 25f && client.world != null && !endSequenceActive) {
             int skip = (int)(level / 25f);
             if (ambientTick % 2 == 0) {
                 client.world.setTime(client.world.getTimeOfDay() + skip * 10L);
             }
         }
 
-        // ── Red screen fade-in at level 100 ──────────────────────────────────
+        // ── Phase 100: end sequence ───────────────────────────────────────────
         if (level >= 100f) {
+            // Fade red in over ~6 seconds
             if (redFadeProgress < 1f) {
-                redFadeProgress = Math.min(1f, redFadeProgress + 0.003f); // ~6 seconds to full red
-            } else {
-                fullRedActive = true;
+                redFadeProgress = Math.min(1f, redFadeProgress + 0.003f);
+            }
+
+            // Once fully red, activate end sequence
+            if (redFadeProgress >= 1f && !endSequenceActive) {
+                endSequenceActive = true;
+                endSequenceTick = 0;
+            }
+
+            if (endSequenceActive) {
+                endSequenceTick++;
+
+                // Freeze player — zero velocity, prevent input
+                client.player.setVelocity(0, 0, 0);
+                client.player.noClip = false;
+
+                // Close game after 20 seconds
+                if (endSequenceTick >= CLOSE_AFTER_TICKS) {
+                    client.scheduleStop();
+                }
             }
         }
 
         // ── Ambient Sounds ───────────────────────────────────────────────────
-        int interval = Math.max(20, 200 - (int)(level * 1.8f));
-        if (ambientTick % interval == 0 && client.getSoundManager() != null) {
-            playAmbientSound(client, level);
+        if (!endSequenceActive) {
+            int interval = Math.max(20, 200 - (int)(level * 1.8f));
+            if (ambientTick % interval == 0 && client.getSoundManager() != null) {
+                playAmbientSound(client, level);
+            }
         }
     }
 
@@ -118,34 +141,61 @@ public class ApocalypseClientEffects {
             drawContext.fill(0, 0, screenW, screenH, (alpha << 24) | 0x8B0000);
         }
 
-        // ── Phase 100: gradual red fade-in ────────────────────────────────────
+        // ── Phase 100: full red takeover ──────────────────────────────────────
         if (level >= 100f) {
-            int alpha = (int)(redFadeProgress * 210); // max alpha 210 (slightly transparent)
-            if (alpha > 0) {
-                drawContext.fill(0, 0, screenW, screenH, (alpha << 24) | 0xAA0000);
+            // Alpha: 0 -> 255 as redFadeProgress goes 0 -> 1
+            int alpha = (int)(redFadeProgress * 255);
+            alpha = Math.min(255, alpha);
+
+            // Full opaque red
+            drawContext.fill(0, 0, screenW, screenH, (alpha << 24) | 0xCC0000);
+
+            // Hide entire HUD once end sequence is active (draw black over HUD area)
+            if (endSequenceActive) {
+                // Cover hotbar area at the bottom
+                drawContext.fill(0, screenH - 60, screenW, screenH, 0xFF000000);
+                // Cover top area (health, hunger etc)
+                drawContext.fill(0, 0, screenW, 40, 0xFF000000);
             }
 
-            // Show shaking text once red is mostly visible
+            // Show shaking text once red is at least 50% in
             if (redFadeProgress >= 0.5f) {
                 String text = "This is the end for you.";
-                int textW = client.textRenderer.getWidth(text);
+                int textW = client.textRenderer.getWidth(text) * 2; // scale 2x
 
-                // Shake amount increases with fade progress
-                float shakeStrength = (redFadeProgress - 0.5f) * 2f * 6f; // 0 -> 6 pixels
+                float shakeStrength = redFadeProgress * 8f;
                 int shakeX = (int)((RANDOM.nextFloat() - 0.5f) * shakeStrength);
                 int shakeY = (int)((RANDOM.nextFloat() - 0.5f) * shakeStrength);
 
                 int x = (screenW - textW) / 2 + shakeX;
                 int y = screenH / 2 - 10 + shakeY;
 
-                // Pulsing red color
-                long time = System.currentTimeMillis();
-                float pulse = (float)(Math.sin(time / 200.0) * 0.5 + 0.5); // 0.0 -> 1.0
-                int r = (int)(180 + pulse * 75); // 180 -> 255
-                int textColor = (r << 16); // pure red varying intensity
+                // Draw text scaled 2x using matrix transform
+                drawContext.getMatrices().push();
+                drawContext.getMatrices().translate(x, y, 0);
+                drawContext.getMatrices().scale(2f, 2f, 1f);
 
-                drawContext.drawTextWithShadow(client.textRenderer, text, x, y, textColor);
+                long time = System.currentTimeMillis();
+                float pulse = (float)(Math.sin(time / 200.0) * 0.5 + 0.5);
+                int r = (int)(200 + pulse * 55); // 200 -> 255
+                int textColor = (0xFF << 24) | (r << 16); // fully opaque red
+
+                drawContext.drawTextWithShadow(client.textRenderer, text, 0, 0, textColor);
+                drawContext.getMatrices().pop();
+
+                // Countdown hint (small, bottom center) — only show last 5 seconds
+                if (endSequenceActive && endSequenceTick >= CLOSE_AFTER_TICKS - 100) {
+                    int secsLeft = (CLOSE_AFTER_TICKS - endSequenceTick) / 20;
+                    String countdown = secsLeft > 0 ? secsLeft + "..." : "Goodbye.";
+                    int cw = client.textRenderer.getWidth(countdown);
+                    drawContext.drawTextWithShadow(client.textRenderer, countdown,
+                            (screenW - cw) / 2, screenH / 2 + 20, 0xFFAA0000);
+                }
             }
         }
+    }
+
+    public static boolean isEndSequenceActive() {
+        return endSequenceActive;
     }
 }
