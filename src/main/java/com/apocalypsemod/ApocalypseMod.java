@@ -44,6 +44,7 @@ public class ApocalypseMod implements ModInitializer {
     public static float apocalypseLevel = 0f;
     public static boolean apocalypseTriggered = false;
     public static int apocalypseTick = 0;
+    private static boolean swordDelivered = false;
     private static final Random RANDOM = new Random();
 
     // How often (in ticks) to spawn a doppelganger per player (20 ticks = 1 sec)
@@ -190,6 +191,7 @@ public class ApocalypseMod implements ModInitializer {
         apocalypseTriggered = false;
         apocalypseLevel = 0f;
         apocalypseTick = 0;
+        swordDelivered = false;
 
         // Reset game rules to normal
         for (ServerWorld world : server.getWorlds()) {
@@ -281,6 +283,14 @@ public class ApocalypseMod implements ModInitializer {
             if (apocalypseTick == 1) {
                 // Disable ALL natural mob spawning — only Doppelgangers should spawn
                 world.getGameRules().get(net.minecraft.world.GameRules.DO_MOB_SPAWNING).set(false, server);
+            }
+
+            // Deliver netherite sword via lightning chest — once per apocalypse
+            if (!swordDelivered) {
+                swordDelivered = true;
+                for (ServerPlayerEntity player : world.getPlayers()) {
+                    deliverSwordChest(world, player);
+                }
             }
             if (apocalypseTick % 1200 == 0) {
                 killAllAnimals(world);
@@ -462,6 +472,42 @@ public class ApocalypseMod implements ModInitializer {
                 }
             }
         }
+    }
+
+    /**
+     * Strikes lightning near the player, then places a chest containing a Netherite Sword.
+     * The chest appears at the lightning strike location as a "gift from the apocalypse".
+     */
+    private void deliverSwordChest(ServerWorld world, ServerPlayerEntity player) {
+        // Pick a spot 5-10 blocks away from player
+        double angle = RANDOM.nextDouble() * Math.PI * 2;
+        double dist = 5 + RANDOM.nextDouble() * 5;
+        int x = (int)(player.getX() + Math.cos(angle) * dist);
+        int z = (int)(player.getZ() + Math.sin(angle) * dist);
+        int y = world.getTopY(net.minecraft.world.Heightmap.Type.WORLD_SURFACE, x, z);
+        BlockPos chestPos = new BlockPos(x, y, z);
+
+        // Strike lightning at that spot
+        net.minecraft.entity.LightningEntity bolt = net.minecraft.entity.EntityType.LIGHTNING_BOLT.create(
+                world, null, chestPos, net.minecraft.entity.SpawnReason.TRIGGERED, false, false);
+        if (bolt != null) world.spawnEntity(bolt);
+
+        // Place a chest there
+        world.setBlockState(chestPos, net.minecraft.block.Blocks.CHEST.getDefaultState());
+
+        // Fill the chest with a Netherite Sword
+        if (world.getBlockEntity(chestPos) instanceof net.minecraft.block.entity.ChestBlockEntity chest) {
+            net.minecraft.item.ItemStack sword = new net.minecraft.item.ItemStack(
+                    net.minecraft.item.Items.NETHERITE_SWORD);
+            chest.setStack(13, sword); // slot 13 = center of chest
+        }
+
+        // Notify the player
+        player.sendMessage(
+                net.minecraft.text.Text.literal("⚡ A lightning strike reveals a chest near you... Something awaits.")
+                        .formatted(net.minecraft.util.Formatting.GOLD, net.minecraft.util.Formatting.BOLD),
+                false
+        );
     }
 
     /** Spread fire randomly on the surface around the player */
