@@ -26,7 +26,6 @@ import org.slf4j.LoggerFactory;
 import net.minecraft.block.Block;
 import net.minecraft.block.Blocks;
 import net.minecraft.block.LeavesBlock;
-import net.minecraft.entity.passive.AnimalEntity;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -292,9 +291,7 @@ public class ApocalypseMod implements ModInitializer {
                     deliverSwordChest(world, player);
                 }
             }
-            if (apocalypseTick % 1200 == 0) {
-                killAllAnimals(world);
-            }
+
 
             // Strip leaves from trees every 20 seconds
             if (apocalypseTick % 400 == 0) {
@@ -416,16 +413,16 @@ public class ApocalypseMod implements ModInitializer {
     }
 
     private void spawnFireball(ServerWorld world, ServerPlayerEntity player) {
-        double x = player.getX() + (RANDOM.nextDouble() - 0.5) * 40;
-        double z = player.getZ() + (RANDOM.nextDouble() - 0.5) * 40;
-        double y = player.getY() + 30 + RANDOM.nextDouble() * 20;
-
-        // Use WitherSkull instead of FireballEntity — does not require a non-null owner
-        net.minecraft.entity.projectile.WitherSkullEntity skull =
-                new net.minecraft.entity.projectile.WitherSkullEntity(world, null, new Vec3d(0, -1, 0));
-        skull.setPosition(x, y, z);
-        skull.setCharged(true); // blue charged wither skull = more destructive
-        world.spawnEntity(skull);
+        // Spawn a lightning strike with explosion at a random position near player
+        double ox = (RANDOM.nextDouble() - 0.5) * 40;
+        double oz = (RANDOM.nextDouble() - 0.5) * 40;
+        BlockPos pos = new BlockPos((int)(player.getX() + ox), (int)player.getY(), (int)(player.getZ() + oz));
+        net.minecraft.entity.LightningEntity bolt = net.minecraft.entity.EntityType.LIGHTNING_BOLT.create(
+                world, null, pos, net.minecraft.entity.SpawnReason.TRIGGERED, false, false);
+        if (bolt != null) world.spawnEntity(bolt);
+        // Add a small explosion at impact
+        world.createExplosion(null, player.getX() + ox, player.getY(), player.getZ() + oz,
+                3f, true, World.ExplosionSourceType.TNT);
     }
 
     private void spawnLavaGeyser(ServerWorld world, ServerPlayerEntity player) {
@@ -443,17 +440,16 @@ public class ApocalypseMod implements ModInitializer {
         }
     }
 
-    private void killAllAnimals(ServerWorld world) {
+    private void killAllMobs(ServerWorld world) {
         world.iterateEntities().forEach(entity -> {
-            if (entity instanceof AnimalEntity animal && !animal.isDead()) {
-                animal.damage(world.getDamageSources().magic(), animal.getMaxHealth() * 2);
+            // Kill everything except players and Doppelgangers
+            if (entity instanceof net.minecraft.entity.LivingEntity living
+                    && !(entity instanceof net.minecraft.entity.player.PlayerEntity)
+                    && !(entity instanceof com.apocalypsemod.entity.DoppelgangerEntity)
+                    && !living.isDead()) {
+                living.damage(world.getDamageSources().magic(), living.getMaxHealth() * 2);
             }
         });
-        world.getServer().getPlayerManager().broadcast(
-                Text.literal("☠ All living creatures are dying...")
-                        .formatted(Formatting.DARK_RED, Formatting.ITALIC),
-                false
-        );
     }
 
     /** Remove all leaf blocks in a large radius around every player */
